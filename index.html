@@ -1,219 +1,287 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pro Carb & Insulin Calculator</title>
-
+<title>AG Fitness Team</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-body{background:#111;color:white;font-family:Arial;padding:20px}
-input,select,button{
-width:100%;padding:12px;margin:8px 0;
-border-radius:8px;border:none;font-size:16px}
-button{background:#0a7d00;color:white;font-weight:bold}
-.food-box{background:#222;padding:8px;margin:5px 0;border-radius:6px}
-.result{margin-top:15px;padding:15px;background:#1b1b1b;border-radius:10px}
-.danger{color:red;font-weight:bold}
-.safe{color:lightgreen;font-weight:bold}
+body{
+font-family: Arial;
+background:#111;
+color:white;
+padding:20px;
+}
+h2{
+text-align:center;
+color:#00ff88;
+}
+input, select, button{
+width:100%;
+padding:12px;
+margin:8px 0;
+border-radius:8px;
+border:none;
+}
+button{
+background:green;
+color:white;
+font-weight:bold;
+}
+.card{
+background:#222;
+padding:12px;
+margin-top:10px;
+border-radius:10px;
+}
+#adminPanel{
+display:none;
+}
+.deleteBtn{
+background:red;
+margin-top:8px;
+}
+.deleteAllBtn{
+background:darkred;
+margin-top:15px;
+}
 </style>
 </head>
 
 <body>
 
-<h2>Pro Carb & Insulin Calculator</h2>
+<h2>AG Fitness Team</h2>
 
-<input type="number" id="ratio" placeholder="Carb Ratio (e.g 10)">
-<input type="number" id="correctionFactor" placeholder="Correction Factor (e.g 50)">
-<input type="number" id="currentSugar" placeholder="Current Sugar">
-<input type="number" id="targetSugar" placeholder="Target Sugar">
+<input id="name" placeholder="Player Name">
 
-<h3>Select Category</h3>
-<select id="categorySelect" onchange="loadFoods()"></select>
+<input type="date" id="trainingDate">
+<input type="time" id="trainingTime">
 
-<h3>Select Food</h3>
-<select id="foodSelect"></select>
+<select id="day" onchange="loadExercises()">
+<option value="">Select Muscle Group</option>
+<option value="Chest">Chest</option>
+<option value="Back">Back</option>
+<option value="Legs">Legs</option>
+<option value="Shoulders">Shoulders</option>
+<option value="Arms">Arms</option>
+<option value="Core">Core</option>
+</select>
 
-<input type="number" id="grams" placeholder="Grams">
+<select id="exercise">
+<option value="">Select Exercise</option>
+</select>
 
-<button onclick="addFood()">Add Food</button>
+<input id="body" placeholder="Body Weight (kg)" type="number">
+<input id="weight" placeholder="Weight Used (kg)" type="number">
+<input id="reps" placeholder="Reps" type="number">
+
+<h3>Blood Sugar (mg/dL)</h3>
+<input id="sugarBefore" placeholder="Before Workout" type="number">
+<input id="sugarDuring" placeholder="During Workout" type="number">
+<input id="sugarAfter" placeholder="After Workout" type="number">
+
+<button onclick="saveData()">Save Data</button>
 
 <hr>
 
-<div id="mealList"></div>
+<h3>Coach Login</h3>
+<input id="password" type="password" placeholder="Enter Coach Password">
+<button onclick="login()">Login</button>
 
-<button onclick="calculate()">Calculate Dose</button>
+<div id="adminPanel">
+<h3>Players Records</h3>
 
-<div id="result" class="result"></div>
+<select id="playerFilter" onchange="filterPlayer()">
+<option value="">Show All Players</option>
+</select>
+
+<div id="data"></div>
+<button class="deleteAllBtn" onclick="deleteAll()">Delete All</button>
+</div>
 
 <script>
 
-let foodDatabase = {
+let coachPassword = "Ahmed2025";
 
-"Grains & Starches":{
-"White Rice":28,"Brown Rice":23,"Basmati Rice":28,
-"Jasmine Rice":28,"Pasta":25,"Spaghetti":25,
-"Macaroni":25,"Oats Dry":66,"Oats Cooked":12,
-"Barley":28,"Bulgur":19,"Quinoa":21,
-"Couscous":23,"Potato Boiled":17,
-"Mashed Potato":15,"French Fries":35,
-"Sweet Potato":20
-},
+let exercises = {
 
-"Bread & Bakery":{
-"White Bread":49,"Whole Wheat Bread":41,
-"Bagel":53,"Burger Bun":49,
-"Pita Bread":55,"Tortilla":49,
-"Toast":50,"Croissant":45,
-"Pancake":28,"Waffle":32
-},
+Chest:[
+"Flat Barbell Bench Press","Incline Barbell Press","Decline Barbell Press",
+"Flat Dumbbell Press","Incline Dumbbell Press","Decline Dumbbell Press",
+"Smith Machine Press","Machine Chest Press","Pec Deck",
+"Cable Fly High to Low","Cable Fly Low to High",
+"Push Ups","Weighted Push Ups","Chest Dips"
+],
 
-"Fruits":{
-"Apple":14,"Banana":23,"Orange":12,
-"Mango":15,"Grapes":18,
-"Strawberries":8,"Watermelon":8,
-"Pineapple":13,"Kiwi":15,
-"Pear":15,"Peach":10,
-"Plum":11,"Apricot":11,
-"Dates":75,"Pomegranate":19,
-"Fig":19,"Guava":14
-},
+Back:[
+"Deadlift","Rack Pull","Wide Grip Pull Up","Close Grip Pull Up",
+"Lat Pulldown Wide","Lat Pulldown Close","Reverse Grip Pulldown",
+"Barbell Row","T-Bar Row","Dumbbell Row","Seated Cable Row",
+"Chest Supported Row","Face Pull","Straight Arm Pulldown"
+],
 
-"Vegetables":{
-"Broccoli":7,"Carrot":10,
-"Cucumber":3,"Tomato":4,
-"Spinach":4,"Zucchini":3,
-"Eggplant":6,"Bell Pepper":6,
-"Green Beans":7,"Lettuce":3,
-"Cabbage":6,"Cauliflower":5,
-"Onion":9,"Beetroot":10,
-"Peas":14
-},
+Legs:[
+"Barbell Squat","Front Squat","Hack Squat","Smith Squat",
+"Leg Press High","Leg Press Low","Walking Lunges",
+"Bulgarian Split Squat","Leg Extension","Lying Leg Curl",
+"Seated Leg Curl","Romanian Deadlift","Stiff Leg Deadlift",
+"Standing Calf Raise","Seated Calf Raise"
+],
 
-"Legumes":{
-"Lentils":20,"Chickpeas":27,
-"Kidney Beans":22,"Black Beans":23,
-"White Beans":21,"Fava Beans":19
-},
+Shoulders:[
+"Barbell Shoulder Press","Dumbbell Shoulder Press","Arnold Press",
+"Machine Shoulder Press","Lateral Raise Dumbbell","Cable Lateral Raise",
+"Front Raise Plate","Front Raise Dumbbell",
+"Rear Delt Fly","Reverse Pec Deck","Upright Row","Face Pull"
+],
 
-"Dairy":{
-"Milk Whole":5,"Milk Skim":5,
-"Greek Yogurt":4,"Regular Yogurt":7,
-"Flavored Yogurt":17,
-"Chocolate Milk":10
-},
+Arms:[
+"Barbell Curl","Dumbbell Curl","Hammer Curl","Preacher Curl",
+"Cable Curl","Concentration Curl",
+"Close Grip Bench Press","Triceps Pushdown",
+"Overhead Triceps Extension","Skull Crusher","Dips Triceps Focus"
+],
 
-"Sweets & Drinks":{
-"Sugar":100,"Honey":82,
-"Dark Chocolate":46,
-"Milk Chocolate":59,
-"Cake":50,"Biscuits":74,
-"Ice Cream":24,
-"Jam":60,
-"Orange Juice":10,
-"Apple Juice":11,
-"Soda":11
-},
-
-"Fast Food":{
-"Burger":30,"Cheeseburger":30,
-"Pizza":33,"Hot Dog":18,
-"Koshari":31,"Shawarma":20,
-"Falafel":31,
-"Chicken Nuggets":15
-}
+Core:[
+"Plank","Side Plank","Hanging Leg Raise","Russian Twist",
+"Cable Crunch","Ab Wheel Rollout",
+"Mountain Climbers","Crunches","Reverse Crunch"
+]
 
 };
 
-let meal=[];
-
-function loadCategories(){
-let categorySelect=document.getElementById("categorySelect");
-Object.keys(foodDatabase).forEach(cat=>{
-let option=document.createElement("option");
-option.value=cat;
-option.text=cat;
-categorySelect.appendChild(option);
-});
-loadFoods();
-}
-
-function loadFoods(){
-let category=document.getElementById("categorySelect").value;
-let foodSelect=document.getElementById("foodSelect");
-foodSelect.innerHTML="";
-Object.keys(foodDatabase[category]).forEach(food=>{
-let option=document.createElement("option");
-option.value=food;
-option.text=food+" ("+
-foodDatabase[category][food]+"g/100g)";
-foodSelect.appendChild(option);
+function loadExercises(){
+let day=document.getElementById("day").value;
+let exerciseSelect=document.getElementById("exercise");
+exerciseSelect.innerHTML="<option value=''>Select Exercise</option>";
+if(exercises[day]){
+exercises[day].forEach(function(ex){
+exerciseSelect.innerHTML+="<option>"+ex+"</option>";
 });
 }
-
-function addFood(){
-let category=document.getElementById("categorySelect").value;
-let food=document.getElementById("foodSelect").value;
-let grams=parseFloat(document.getElementById("grams").value);
-if(!grams) return;
-
-let carb=(grams*
-foodDatabase[category][food])/100;
-
-meal.push({food,grams,carb});
-
-document.getElementById("mealList").innerHTML+=
-`<div class="food-box">
-${food} - ${grams}g = ${carb.toFixed(1)}g carbs
-</div>`;
-
-document.getElementById("grams").value="";
 }
 
-function calculate(){
-
-let ratio=parseFloat(
-document.getElementById("ratio").value);
-
-let correctionFactor=parseFloat(
-document.getElementById("correctionFactor").value);
-
-let current=parseFloat(
-document.getElementById("currentSugar").value);
-
-let target=parseFloat(
-document.getElementById("targetSugar").value);
-
-let totalCarbs=
-meal.reduce((sum,item)=>sum+item.carb,0);
-
-let carbUnits=totalCarbs/ratio;
-
-let correctionUnits=
-(current-target)/correctionFactor;
-
-if(correctionUnits<0) correctionUnits=0;
-
-let totalUnits=carbUnits+correctionUnits;
-
-let status="";
-if(current<70)
-status="<div class='danger'>Low Sugar Warning</div>";
-else if(current>250)
-status="<div class='danger'>High Sugar Warning</div>";
-else
-status="<div class='safe'>Sugar Level Safe</div>";
-
-document.getElementById("result").innerHTML=
-`
-${status}
-<p>Total Carbs: ${totalCarbs.toFixed(1)} g</p>
-<p>Carb Units (Carbs ÷ Ratio): ${carbUnits.toFixed(2)}</p>
-<p>Correction Units: ${correctionUnits.toFixed(2)}</p>
-<h3>Total Insulin: ${totalUnits.toFixed(2)} units</h3>
-`;
+function sugarStatus(value){
+value=parseInt(value);
+if(value<70) return "<span style='color:red;'>Hypoglycemia ⚠️</span>";
+if(value<=180) return "<span style='color:lightgreen;'>Safe ✅</span>";
+if(value<=250) return "<span style='color:orange;'>High ⚠️</span>";
+return "<span style='color:red;'>Very High 🚨</span>";
 }
 
-loadCategories();
+function bmiCategory(bmi){
+if(bmi<18.5) return "Underweight";
+if(bmi<25) return "Normal";
+if(bmi<30) return "Overweight";
+return "Obese";
+}
+
+function saveData(){
+let name=document.getElementById("name").value;
+let date=document.getElementById("trainingDate").value;
+let time=document.getElementById("trainingTime").value;
+let body=document.getElementById("body").value;
+let day=document.getElementById("day").value;
+let exercise=document.getElementById("exercise").value;
+let weight=document.getElementById("weight").value;
+let reps=document.getElementById("reps").value;
+let sugarBefore=document.getElementById("sugarBefore").value;
+let sugarDuring=document.getElementById("sugarDuring").value;
+let sugarAfter=document.getElementById("sugarAfter").value;
+
+if(!name || !day || !exercise){
+alert("Complete required fields");
+return;
+}
+
+let bmi=(body/(1.70*1.70)).toFixed(1);
+
+let record={name,date,time,body,day,exercise,weight,reps,sugarBefore,sugarDuring,sugarAfter,bmi};
+
+let all=JSON.parse(localStorage.getItem("training"))||[];
+all.push(record);
+localStorage.setItem("training",JSON.stringify(all));
+
+alert("Saved Successfully");
+clearFields();
+}
+
+function login(){
+if(document.getElementById("password").value===coachPassword){
+document.getElementById("adminPanel").style.display="block";
+displayData();
+}else{
+alert("Wrong Password");
+}
+}
+
+function deleteOne(index){
+let all=JSON.parse(localStorage.getItem("training"))||[];
+all.splice(index,1);
+localStorage.setItem("training",JSON.stringify(all));
+displayData();
+}
+
+function deleteAll(){
+localStorage.removeItem("training");
+displayData();
+}
+
+function displayData(){
+let all=JSON.parse(localStorage.getItem("training"))||[];
+let output="";
+let playerSet=new Set();
+
+all.forEach(r=>playerSet.add(r.name));
+
+let filter=document.getElementById("playerFilter");
+filter.innerHTML="<option value=''>Show All Players</option>";
+playerSet.forEach(name=>{
+filter.innerHTML+="<option>"+name+"</option>";
+});
+
+all.forEach(function(r,index){
+output+=buildCard(r,index);
+});
+
+document.getElementById("data").innerHTML=output;
+}
+
+function filterPlayer(){
+let selected=document.getElementById("playerFilter").value;
+let all=JSON.parse(localStorage.getItem("training"))||[];
+let output="";
+
+all.forEach(function(r,index){
+if(selected==="" || r.name===selected){
+output+=buildCard(r,index);
+}
+});
+
+document.getElementById("data").innerHTML=output;
+}
+
+function buildCard(r,index){
+return "<div class='card'>"+
+"<b>"+r.name+"</b><br>"+
+r.date+" | "+r.time+"<br>"+
+r.day+" - "+r.exercise+"<br>"+
+"Body: "+r.body+"kg | BMI: "+r.bmi+" ("+bmiCategory(r.bmi)+")<br>"+
+"Weight: "+r.weight+"kg | Reps: "+r.reps+"<br>"+
+"Sugar: "+r.sugarBefore+" / "+r.sugarDuring+" / "+r.sugarAfter+"<br>"+
+"Status: "+sugarStatus(r.sugarAfter)+"<br>"+
+"<button class='deleteBtn' onclick='deleteOne("+index+")'>Delete</button></div>";
+}
+
+function clearFields(){
+document.getElementById("name").value="";
+document.getElementById("trainingDate").value="";
+document.getElementById("trainingTime").value="";
+document.getElementById("body").value="";
+document.getElementById("weight").value="";
+document.getElementById("reps").value="";
+document.getElementById("sugarBefore").value="";
+document.getElementById("sugarDuring").value="";
+document.getElementById("sugarAfter").value="";
+}
 
 </script>
 

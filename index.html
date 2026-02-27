@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pro Carb & Insulin Calculator</title>
+
+<style>
+body{background:#111;color:white;font-family:Arial;padding:20px}
+input,select,button{
+width:100%;padding:12px;margin:8px 0;
+border-radius:8px;border:none;font-size:16px}
+button{background:#0a7d00;color:white;font-weight:bold}
+.food-box{background:#222;padding:8px;margin:5px 0;border-radius:6px}
+.result{margin-top:15px;padding:15px;background:#1b1b1b;border-radius:10px}
+.danger{color:red;font-weight:bold}
+.safe{color:lightgreen;font-weight:bold}
+</style>
+</head>
+
+<body>
+
+<h2>Pro Carb & Insulin Calculator</h2>
+
+<input type="number" id="ratio" placeholder="Carb Ratio (e.g 10)">
+<input type="number" id="correctionFactor" placeholder="Correction Factor (e.g 50)">
+<input type="number" id="currentSugar" placeholder="Current Sugar">
+<input type="number" id="targetSugar" placeholder="Target Sugar">
+
+<h3>Select Category</h3>
+<select id="categorySelect" onchange="loadFoods()"></select>
+
+<h3>Select Food</h3>
+<select id="foodSelect"></select>
+
+<input type="number" id="grams" placeholder="Grams">
+
+<button onclick="addFood()">Add Food</button>
+
+<hr>
+
+<div id="mealList"></div>
+
+<button onclick="calculate()">Calculate Dose</button>
+
+<div id="result" class="result"></div>
+
+<script>
+
+let foodDatabase = {
+
+"Grains & Starches":{
+"White Rice":28,"Brown Rice":23,"Basmati Rice":28,
+"Jasmine Rice":28,"Pasta":25,"Spaghetti":25,
+"Macaroni":25,"Oats Dry":66,"Oats Cooked":12,
+"Barley":28,"Bulgur":19,"Quinoa":21,
+"Couscous":23,"Potato Boiled":17,
+"Mashed Potato":15,"French Fries":35,
+"Sweet Potato":20
+},
+
+"Bread & Bakery":{
+"White Bread":49,"Whole Wheat Bread":41,
+"Bagel":53,"Burger Bun":49,
+"Pita Bread":55,"Tortilla":49,
+"Toast":50,"Croissant":45,
+"Pancake":28,"Waffle":32
+},
+
+"Fruits":{
+"Apple":14,"Banana":23,"Orange":12,
+"Mango":15,"Grapes":18,
+"Strawberries":8,"Watermelon":8,
+"Pineapple":13,"Kiwi":15,
+"Pear":15,"Peach":10,
+"Plum":11,"Apricot":11,
+"Dates":75,"Pomegranate":19,
+"Fig":19,"Guava":14
+},
+
+"Vegetables":{
+"Broccoli":7,"Carrot":10,
+"Cucumber":3,"Tomato":4,
+"Spinach":4,"Zucchini":3,
+"Eggplant":6,"Bell Pepper":6,
+"Green Beans":7,"Lettuce":3,
+"Cabbage":6,"Cauliflower":5,
+"Onion":9,"Beetroot":10,
+"Peas":14
+},
+
+"Legumes":{
+"Lentils":20,"Chickpeas":27,
+"Kidney Beans":22,"Black Beans":23,
+"White Beans":21,"Fava Beans":19
+},
+
+"Dairy":{
+"Milk Whole":5,"Milk Skim":5,
+"Greek Yogurt":4,"Regular Yogurt":7,
+"Flavored Yogurt":17,
+"Chocolate Milk":10
+},
+
+"Sweets & Drinks":{
+"Sugar":100,"Honey":82,
+"Dark Chocolate":46,
+"Milk Chocolate":59,
+"Cake":50,"Biscuits":74,
+"Ice Cream":24,
+"Jam":60,
+"Orange Juice":10,
+"Apple Juice":11,
+"Soda":11
+},
+
+"Fast Food":{
+"Burger":30,"Cheeseburger":30,
+"Pizza":33,"Hot Dog":18,
+"Koshari":31,"Shawarma":20,
+"Falafel":31,
+"Chicken Nuggets":15
+}
+
+};
+
+let meal=[];
+
+function loadCategories(){
+let categorySelect=document.getElementById("categorySelect");
+Object.keys(foodDatabase).forEach(cat=>{
+let option=document.createElement("option");
+option.value=cat;
+option.text=cat;
+categorySelect.appendChild(option);
+});
+loadFoods();
+}
+
+function loadFoods(){
+let category=document.getElementById("categorySelect").value;
+let foodSelect=document.getElementById("foodSelect");
+foodSelect.innerHTML="";
+Object.keys(foodDatabase[category]).forEach(food=>{
+let option=document.createElement("option");
+option.value=food;
+option.text=food+" ("+
+foodDatabase[category][food]+"g/100g)";
+foodSelect.appendChild(option);
+});
+}
+
+function addFood(){
+let category=document.getElementById("categorySelect").value;
+let food=document.getElementById("foodSelect").value;
+let grams=parseFloat(document.getElementById("grams").value);
+if(!grams) return;
+
+let carb=(grams*
+foodDatabase[category][food])/100;
+
+meal.push({food,grams,carb});
+
+document.getElementById("mealList").innerHTML+=
+`<div class="food-box">
+${food} - ${grams}g = ${carb.toFixed(1)}g carbs
+</div>`;
+
+document.getElementById("grams").value="";
+}
+
+function calculate(){
+
+let ratio=parseFloat(
+document.getElementById("ratio").value);
+
+let correctionFactor=parseFloat(
+document.getElementById("correctionFactor").value);
+
+let current=parseFloat(
+document.getElementById("currentSugar").value);
+
+let target=parseFloat(
+document.getElementById("targetSugar").value);
+
+let totalCarbs=
+meal.reduce((sum,item)=>sum+item.carb,0);
+
+let carbUnits=totalCarbs/ratio;
+
+let correctionUnits=
+(current-target)/correctionFactor;
+
+if(correctionUnits<0) correctionUnits=0;
+
+let totalUnits=carbUnits+correctionUnits;
+
+let status="";
+if(current<70)
+status="<div class='danger'>Low Sugar Warning</div>";
+else if(current>250)
+status="<div class='danger'>High Sugar Warning</div>";
+else
+status="<div class='safe'>Sugar Level Safe</div>";
+
+document.getElementById("result").innerHTML=
+`
+${status}
+<p>Total Carbs: ${totalCarbs.toFixed(1)} g</p>
+<p>Carb Units (Carbs ÷ Ratio): ${carbUnits.toFixed(2)}</p>
+<p>Correction Units: ${correctionUnits.toFixed(2)}</p>
+<h3>Total Insulin: ${totalUnits.toFixed(2)} units</h3>
+`;
+}
+
+loadCategories();
+
+</script>
+
+</body>
+</html>
